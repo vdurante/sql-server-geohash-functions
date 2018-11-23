@@ -23,8 +23,32 @@ SELECT dbo.geohash_encode(57.64911, 10.40744, 8)
 
 ### Decoding
 
-Still not implemented.
+Decoding a Geohash will return a table with a single row with following columns:
+
+* LatL - Left Latitude
+* LatR - Right Latitude
+* LngT - Top Longitude
+* LngB - Bottom Longitude
+* LatC - Center Latitude
+* LngC - Center Longitude
+* LatError - Latitude Error
+* LngError - Longitude Error
+
+Example:
+
+```sql
+SELECT LatL, LatR, LngT, LngB, LatC, LngC, LatError, LngError FROM dbo.geohash_decode('u4pruyd')
+-- 57.6480103	57.6493836	10.4067994	10.4081727	57.6486970	10.4074861	0.0006867	0.0006867
+```
+
+Using columns from a table:
+
+```sql
+SELECT t.Geohash, d.LatL, d.LatR, d.LngT, d.LngB, d.LatC, d.LngC, d.LatError, d.LngError FROM MyTable t CROSS APPLY dbo.geohash_decode(t.Geohash) d
+```
+
 
 ## Credits
 
-This code is heavily inspired by nowelium's [geohash-mysql-func](https://github.com/nowelium/geohash-mysql-func/blob/master/geohash.sql), with a few modifications to improve rounding of the decimal numbers.
+* The bit and base32 functions were reimplemented using nowelium's [geohash-mysql-func](https://github.com/nowelium/geohash-mysql-func/blob/master/geohash.sql) as a reference
+* The `geohash_encode` and `geohash_decode` functions were implemented using davetroy's [geohash-js](https://github.com/davetroy/geohash-js) as a reference

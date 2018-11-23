@@ -1,4 +1,4 @@
-CREATE OR ALTER FUNCTION geohash_bit(
+CREATE FUNCTION [dbo].[geohash_bit](
     @_bit TINYINT
 )
 RETURNS TINYINT
@@ -16,7 +16,7 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER FUNCTION geohash_base32 (
+CREATE FUNCTION [dbo].[geohash_base32] (
     @_index TINYINT
 )
 RETURNS CHAR(1)
@@ -60,51 +60,88 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER FUNCTION geohash_encode (
+CREATE FUNCTION [dbo].[geohash_base32_index] (
+    @_ch CHAR(1)
+)
+RETURNS TINYINT
+AS
+BEGIN
+    RETURN CASE @_ch
+        WHEN '0' THEN 0
+        WHEN '1' THEN 1
+        WHEN '2' THEN 2
+        WHEN '3' THEN  3
+        WHEN '4' THEN 4
+        WHEN '5' THEN 5
+        WHEN '6' THEN 6
+        WHEN '7' THEN 7
+        WHEN '8' THEN 8
+        WHEN '9' THEN 9
+        WHEN 'b' THEN 10
+        WHEN 'c' THEN 11
+        WHEN 'd' THEN 12
+        WHEN 'e' THEN 13
+        WHEN 'f' THEN 14
+        WHEN 'g' THEN 15
+        WHEN 'h' THEN 16
+        WHEN 'j' THEN 17
+        WHEN 'k' THEN 18
+        WHEN 'm' THEN 19
+        WHEN 'n' THEN 20
+        WHEN 'p' THEN 21
+        WHEN 'q' THEN 22
+        WHEN 'r' THEN 23
+        WHEN 's' THEN 24
+        WHEN 't' THEN 25
+        WHEN 'u' THEN 26
+        WHEN 'v' THEN 27
+        WHEN 'w' THEN 28
+        WHEN 'x' THEN 29
+        WHEN 'y' THEN 30
+        WHEN 'z' THEN 31
+    END
+END
+GO
+
+
+CREATE FUNCTION [dbo].[geohash_encode] (
     @_latitude DECIMAL(10, 7),
     @_longitude DECIMAL(10, 7),
     @_precision TINYINT
 )
--- TODO rollback
 RETURNS VARCHAR(12)
 AS
 BEGIN
-    DECLARE @latL DECIMAL(10, 7) = -90.0
-    DECLARE @latR DECIMAL(10, 7) = 90.0
+    DECLARE @is_even TINYINT = 1
+    DECLARE @i TINYINT = 0
 
-    DECLARE @lonT DECIMAL(10, 7) = -180.0
-    DECLARE @lonB DECIMAL(10, 7) = 180.0
+    DECLARE @latL DECIMAL(38, 36) = -90.0
+    DECLARE @latR DECIMAL(38, 36) = 90.0
 
-    DECLARE @bit TINYINT = 0
-    DECLARE @bit_pos TINYINT = 0
-    DECLARE @ch CHAR(1) = ''
-    DECLARE @ch_pos INT = 0
+    DECLARE @lonT DECIMAL(38, 35) = -180.0
+    DECLARE @lonB DECIMAL(38, 35) = 180.0
+
+    DECLARE @bit INT = 0
+    DECLARE @ch INT = 0
+
     DECLARE @mid DECIMAL(12, 8) = NULL
-
-    DECLARE @even TINYINT = 1
+    
     DECLARE @geohash VARCHAR(12) = ''
-    DECLARE @geohash_length TINYINT = 0
 
     IF @_precision IS NULL
         SET @_precision = 12
 
-    WHILE @geohash_length < @_precision
+    WHILE LEN(@geohash) < @_precision
     BEGIN
-        IF @even != 0
+        IF @is_even = 1
         BEGIN
-            --
-            -- is even
-            --
-            
             SET @mid = (@lonT + @lonB) / 2;
 			
-            SET @mid = ROUND(@mid, 7, 1);
+            --SET @mid = ROUND(@mid, 7, 1);
 			
-            IF @mid < @_longitude
+            IF @_longitude > @mid
             BEGIN
-                SET @bit = dbo.geohash_bit(@bit_pos);
-
-                SET @ch_pos = @ch_pos | @bit;
+                SET @ch = @ch | dbo.geohash_bit(@bit)
                 SET @lonT = @mid;
             END
             ELSE
@@ -114,19 +151,13 @@ BEGIN
         END
         ELSE
         BEGIN
-            --
-            -- not even
-            --
-            
             SET @mid = (@latL + @latR) / 2;
-			
-            SET @mid = ROUND(@mid, 7, 1);
+
+            --SET @mid = ROUND(@mid, 7, 1);
 			
             IF @mid < @_latitude 
             BEGIN
-                SET @bit = dbo.geohash_bit(@bit_pos);
-
-                SET @ch_pos = @ch_pos | @bit;
+                SET @ch = @ch | dbo.geohash_bit(@bit);
                 SET @latL = @mid;
             END
             ELSE
@@ -135,26 +166,110 @@ BEGIN
             END
         END
 
-        -- toggle even
-        IF @even = 0
-            SET @even = 1
+        IF @is_even = 0
+            SET @is_even = 1
         ELSE
-            SET @even = 0
+            SET @is_even = 0
 
-        IF @bit_pos < 4
-            SET @bit_pos = @bit_pos + 1;
+        IF @bit < 4
+            SET @bit = @bit + 1;
         ELSE
         BEGIN
-            SET @ch = dbo.geohash_base32(@ch_pos);
-
-            SET @geohash = CONCAT(@geohash, @ch);
-            SET @bit_pos = 0;
-            SET @ch_pos = 0;
+            SET @geohash = CONCAT(@geohash, dbo.geohash_base32(@ch));
+            SET @bit = 0;
+            SET @ch = 0;
         END
-
-        SET @geohash_length = LEN(@geohash);
     END
 
     RETURN @geohash
+END
+GO
+
+CREATE FUNCTION [dbo].[geohash_decode] (
+    @_geohash VARCHAR(12)
+)
+RETURNS @result TABLE(
+    LatL DECIMAL(10, 7),
+    LatR DECIMAL(10, 7),
+    LngT DECIMAL(10, 7),
+    LngB DECIMAL(10, 7),
+    LatC DECIMAL(10,7),
+    LngC DECIMAL(10, 7),
+    LatError DECIMAL(10,7),
+    LngError DECIMAL(10, 7)
+)
+AS
+BEGIN
+    DECLARE @is_even bit = 1
+    DECLARE @latL DECIMAL(10,7) = -90.0
+    DECLARE @latR DECIMAL(10,7) = 90.0
+    DECLARE @latC DECIMAL(10,7)
+    DECLARE @lonT DECIMAL(10,7) = -180
+    DECLARE @lonB DECIMAL(10,7) = 180
+    DECLARE @lonC DECIMAL(10,7)
+
+    DECLARE @lat_err DECIMAL(10,7) = 90.0
+    DECLARE @lon_err DECIMAL(10,7) = 180.0
+
+    DECLARE @i tinyint = 0
+    DECLARE @len tinyint = LEN(@_geohash)
+
+    DECLARE @c CHAR(1) = ''
+    DECLARE @cd TINYINT = 0
+
+    DECLARE @j TINYINT = 0
+
+    DECLARE @mask TINYINT = 0
+    DECLARE @masked_val TINYINT = 0
+
+    WHILE @i < @len
+    BEGIN
+        SET @c = SUBSTRING(@_geohash, @i + 1, 1)
+
+        SET @cd = dbo.geohash_base32_index(@c)
+
+        SET @j = 0
+
+        WHILE @j < 5
+        BEGIN
+            SET @mask = dbo.geohash_bit(@j)
+            SET @masked_val = @cd & @mask
+
+            IF @is_even = 1
+            BEGIN
+                SET @lon_err = @lon_err / 2
+
+                IF @masked_val != 0
+                    SET @lonT = (@lonT + @lonB) / 2
+                ELSE
+                    SET @lonB = (@lonT + @lonB) / 2
+            END
+            ELSE
+            BEGIN
+                SET @lat_err = @lat_err / 2
+
+                IF @masked_val != 0
+                    SET @latL = (@latL + @latR) / 2
+                ELSE
+                    SET @latR = (@latL + @latR) / 2
+            END
+
+            IF @is_even = 0
+                SET @is_even = 1
+            ELSE
+                SET @is_even = 0
+
+            SET @j = @j + 1
+        END
+
+        SET @i = @i + 1
+    END
+
+    SET @latC = (@latL + @latR) / 2
+    SET @lonC = (@lonT + @lonB) / 2
+
+    INSERT @result
+    SELECT @latL, @latR, @lonT, @lonB, @latC, @lonC, @lat_err, @lon_err
+    RETURN
 END
 GO
