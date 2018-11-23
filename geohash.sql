@@ -1,3 +1,6 @@
+DROP FUNCTION IF EXISTS [dbo].[geohash_bit]
+GO
+
 CREATE FUNCTION [dbo].[geohash_bit](
     @_bit TINYINT
 )
@@ -14,6 +17,9 @@ BEGIN
         WHEN 4 THEN 1
         END
 END
+GO
+
+DROP FUNCTION IF EXISTS [dbo].[geohash_base32]
 GO
 
 CREATE FUNCTION [dbo].[geohash_base32] (
@@ -60,6 +66,9 @@ BEGIN
 END
 GO
 
+DROP FUNCTION IF EXISTS [dbo].[geohash_base32_index]
+GO
+
 CREATE FUNCTION [dbo].[geohash_base32_index] (
     @_ch CHAR(1)
 )
@@ -103,6 +112,8 @@ BEGIN
 END
 GO
 
+DROP FUNCTION IF EXISTS [dbo].[geohash_encode]
+GO
 
 CREATE FUNCTION [dbo].[geohash_encode] (
     @_latitude DECIMAL(10, 7),
@@ -185,6 +196,8 @@ BEGIN
 END
 GO
 
+DROP FUNCTION IF EXISTS [dbo].[geohash_decode]
+GO
 CREATE FUNCTION [dbo].[geohash_decode] (
     @_geohash VARCHAR(12)
 )
