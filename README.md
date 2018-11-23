@@ -13,7 +13,7 @@ Just execute the code from `geohash.sql` in your SQL Server database.
 
 ```sql
 SELECT dbo.geohash_encode(57.64911, 10.40744, 12)
--- u4pruydqqvjc
+-- u4pruydqqvj8
 ```
 
 ```sql
@@ -47,8 +47,7 @@ Using columns from a table:
 SELECT t.Geohash, d.LatL, d.LatR, d.LngT, d.LngB, d.LatC, d.LngC, d.LatError, d.LngError FROM MyTable t CROSS APPLY dbo.geohash_decode(t.Geohash) d
 ```
 
-
 ## Credits
 
-* The bit and base32 functions were reimplemented using nowelium's [geohash-mysql-func](https://github.com/nowelium/geohash-mysql-func/blob/master/geohash.sql) as a reference
+* The `geohash_bit`, `geohash_base32` and `geohash_base32_index` functions were implemented using nowelium's [geohash-mysql-func](https://github.com/nowelium/geohash-mysql-func/blob/master/geohash.sql) as a reference
 * The `geohash_encode` and `geohash_decode` functions were implemented using davetroy's [geohash-js](https://github.com/davetroy/geohash-js) as a reference
