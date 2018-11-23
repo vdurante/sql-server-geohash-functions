@@ -37,14 +37,19 @@ Decoding a Geohash will return a table with a single row with following columns:
 Example:
 
 ```sql
-SELECT LatL, LatR, LngT, LngB, LatC, LngC, LatError, LngError FROM dbo.geohash_decode('u4pruyd')
+SELECT
+    LatL, LatR, LngT, LngB, LatC, LngC, LatError, LngError
+FROM dbo.geohash_decode('u4pruyd')
 -- 57.6480103	57.6493836	10.4067994	10.4081727	57.6486970	10.4074861	0.0006867	0.0006867
 ```
 
 Using columns from a table:
 
 ```sql
-SELECT t.Geohash, d.LatL, d.LatR, d.LngT, d.LngB, d.LatC, d.LngC, d.LatError, d.LngError FROM MyTable t CROSS APPLY dbo.geohash_decode(t.Geohash) d
+SELECT
+    t.Geohash, d.LatL, d.LatR, d.LngT, d.LngB, d.LatC, d.LngC, d.LatError, d.LngError
+FROM MyTable t 
+CROSS APPLY dbo.geohash_decode(t.Geohash) d
 ```
 
 ## Credits
