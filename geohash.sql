@@ -123,6 +123,9 @@ CREATE FUNCTION [dbo].[geohash_encode] (
 RETURNS VARCHAR(12)
 AS
 BEGIN
+    IF @_latitude IS NULL OR @_longitude IS NULL
+        RETURN NULL
+    
     DECLARE @is_even TINYINT = 1
     DECLARE @i TINYINT = 0
 
